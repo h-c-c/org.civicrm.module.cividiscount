@@ -1,5 +1,5 @@
 <?php
-// Two vars need setting for a giftcard until the implentation is complete. Fill these in to match
+// Two vars need setting for a giftcard until the implementation is complete. Fill these in to match
 // // your organizations giftcard contriubution page and message template for send the giftcatd PDF.
 // Set these in the beginning of the post hook.
 //  $giftcard_contributionPage = 'YOURPAGE';
@@ -118,7 +118,7 @@ function cividiscount_civicrm_tabs(&$tabs, $cid) {
  * initial registration screen.
  *
  * Works for events and membership.
- y
+ *
  * @param string $fname
  * @param CRM_Contribute_Form_Contribution_Main|CRM_Core_Form $form
  */
@@ -926,7 +926,7 @@ function _cividiscount_filter_membership_discounts($discounts, $membershipTypeVa
 }
 
 /**
-FUCKYEAH* Calculate either a monetary or percentage discount.
+ * Calculate either a monetary or percentage discount.
  */
 function _cividiscount_calc_discount($amount, $label, $discount, $autodiscount, $currency = 'USD') {
   $title = $autodiscount ? ts('Includes automatic member discount of') : ts('Includes applied discount code %1', array(1 => $discount['code']));
