@@ -1,4 +1,9 @@
 <?php
+// Two vars need setting for a giftcard until the implentation is complete. Fill these in to match
+// // your organizations giftcard contriubution page and message template for send the giftcatd PDF.
+// Set these in the beginning of the post hook.
+//  $giftcard_contributionPage = 'YOURPAGE';
+//  $message_template_id = 'YOURTEMPALATE';
 
 require_once 'cividiscount.civix.php';
 
@@ -113,7 +118,7 @@ function cividiscount_civicrm_tabs(&$tabs, $cid) {
  * initial registration screen.
  *
  * Works for events and membership.
- *
+ y
  * @param string $fname
  * @param CRM_Contribute_Form_Contribution_Main|CRM_Core_Form $form
  */
@@ -228,6 +233,8 @@ function cividiscount_civicrm_validateForm($name, &$fields, &$files, &$form, &$e
   ))) {
     return;
   }
+  
+ 
 
   // _discountInfo is assigned in cividiscount_civicrm_buildAmount() or
   // cividiscount_civicrm_membershipTypeValues() when a discount is used.
@@ -412,7 +419,7 @@ function cividiscount_civicrm_buildAmount($pageType, &$form, &$amounts) {
             if (!empty($applyToAllLineItems) || CRM_Utils_Array::value($option['id'], $priceFields)) {
               $originalLabel = $originalAmounts[$fee_id]['options'][$option_id]['label'];
               $originalAmount = CRM_Utils_Rule::cleanMoney($originalAmounts[$fee_id]['options'][$option_id]['amount']);
-              list($amount, $label) =
+              list($amount, $label, $remainder) =
                 _cividiscount_calc_discount($originalAmount, $originalLabel, $discount, $autodiscount, $currency);
               $discountAmount = $originalAmounts[$fee_id]['options'][$option_id]['amount'] - $amount;
               if($discountAmount > CRM_Utils_Array::value('discount_applied', $option)) {
@@ -460,6 +467,7 @@ function cividiscount_civicrm_buildAmount($pageType, &$form, &$amounts) {
         'discount' => $discount,
         'autodiscount' => $autodiscount,
         'contact_id' => $contact_id,
+	'remainder' => $remainder,
       ));
     }
   }
@@ -592,7 +600,7 @@ function cividiscount_civicrm_membershipTypeValues(&$form, &$membershipTypeValue
   $discount = array_shift($discounts);
   foreach ($membershipTypeValues as &$values) {
     if (!empty($discount['memberships']) && CRM_Utils_Array::value($values['id'], $discount['memberships'])) {
-      list($value, $label) = _cividiscount_calc_discount($values['minimum_fee'], $values['name'], $discount, $discountCalculator->isAutoDiscount());
+      list($value, $label, $remainder) = _cividiscount_calc_discount($values['minimum_fee'], $values['name'], $discount, $discountCalculator->isAutoDiscount());
       $values['minimum_fee'] = $value;
       $values['name'] = $label;
     }
@@ -602,6 +610,7 @@ function cividiscount_civicrm_membershipTypeValues(&$form, &$membershipTypeValue
     'discount' => $discount,
     'autodiscount' => $discountCalculator->isAutoDiscount(),
     'contact_id' => $contact_id,
+    'remainder' => $remainder,
   ));
 }
 
@@ -633,6 +642,7 @@ function cividiscount_civicrm_postProcess($class, &$form) {
     'item_id' => $discount['id'],
     'description' => CRM_Utils_Array::value('amount_level', $params) . " " . CRM_Utils_Array::value('description', $params),
     'contribution_id' => CRM_Utils_Array::value('contributionID', $params),
+    'remainder' => $discountInfo['remainder'],
   );
   // Online event registration.
   // Note that CRM_Event_Form_Registration_Register is an intermediate form.
@@ -692,6 +702,15 @@ function cividiscount_civicrm_postProcess($class, &$form) {
       $discountParams['entity_id'] = $contribution_id;
     }
     civicrm_api3('DiscountTrack', 'create', $discountParams);
+    if (!empty($discountParams['remainder'])) {
+      civicrm_api3('DiscountCode', 'create', array(
+        'sequential' => 1,
+        'id' => $discountParams['item_id'],
+	'is_active' => 1,
+	'amount_type' => 3,
+        'amount' => $discountParams['remainder'],
+     ));
+    }
   }
 
 }
@@ -725,8 +744,16 @@ function _cividiscount_consume_discount_code_for_online_contribution($params, $d
   $discountParams['contact_id'] = $membership['contact_id'];
   $discountParams['entity_table'] = 'civicrm_membership';
   $discountParams['entity_id'] =  $membershipId;
-
   civicrm_api3('DiscountTrack', 'create', $discountParams);
+    if (!empty($discountParams['remainder'])) {
+      civicrm_api3('DiscountCode', 'create', array(
+        'sequential' => 1,
+        'id' => $discountParams['item_id'],
+        'amount' => $discountParams['remainder'],
+        'amount_type' => 3,
+	'is_active' => 1,
+     ));
+   }
 }
 
 /**
@@ -794,6 +821,15 @@ function _cividiscount_consume_discount_code_for_online_event($participant_ids, 
     $discountParams['entity_table'] = 'civicrm_participant';
     $discountParams['entity_id'] = $participant_id;
     civicrm_api3('DiscountTrack', 'create', $discountParams);
+    if (!empty($discountParams['remainder'])) {
+      civicrm_api3('DiscountCode', 'create', array(
+        'sequential' => 1,
+	'id' => $discountParams['item_id'],
+        'is_active' => 1,
+        'amount_type' => 3,
+        'amount' => $discountParams['remainder'],
+));  
+    }
   }
 }
 
@@ -890,19 +926,24 @@ function _cividiscount_filter_membership_discounts($discounts, $membershipTypeVa
 }
 
 /**
- * Calculate either a monetary or percentage discount.
+FUCKYEAH* Calculate either a monetary or percentage discount.
  */
 function _cividiscount_calc_discount($amount, $label, $discount, $autodiscount, $currency = 'USD') {
   $title = $autodiscount ? ts('Includes automatic member discount of') : ts('Includes applied discount code %1', array(1 => $discount['code']));
-  if ($discount['amount_type'] == '2') {
+  if ($discount['amount_type'] == '2' || $discount['amount_type'] == '3') {
     $newamount = CRM_Utils_Rule::cleanMoney($amount) - CRM_Utils_Rule::cleanMoney($discount['amount']);
     $fmt_discount = CRM_Utils_Money::format($discount['amount'], $currency);
     $newlabel = $label . " ({$title}: {$fmt_discount} {$discount['description']})";
-
+    if ( $discount['amount_type'] == '3' && $newamount <= 0) {
+        $remainder = abs($newamount);
+     } else {
+	$remainder = 0;     
+     }
   }
   else {
     $newamount = $amount - ($amount * ($discount['amount'] / 100));
     $newlabel = $label ." ({$title}: {$discount['amount']}% {$discount['description']})";
+    $remainder = 0;     
   }
 
   $newamount = round($newamount, 2);
@@ -912,7 +953,7 @@ function _cividiscount_calc_discount($amount, $label, $discount, $autodiscount, 
     $newamount = '0.00';
   }
 
-  return array($newamount, $newlabel);
+  return array($newamount, $newlabel, $remainder);
 }
 
 /**
@@ -1174,3 +1215,72 @@ function cividiscount_civicrm_entityTypes(&$entityTypes) {
   );
 
 }
+/**
+ * Implementation of hook_civicrm_post
+ */
+
+function cividiscount_civicrm_post( $op, $objectName, $objectId, &$objectRef ) {
+   $giftcard_contributionPage = '1';
+   $message_template_id = '66';
+
+// When a gift card is purchased, generate a discount code with type 3.  
+// Email a PDF to with the code to the purchaser or the ultimate recipient.
+	 
+  if ($objectName == 'Contribution' &&  $op == 'create' )  {
+
+    $contribution = civicrm_api3('Contribution', 'get', array(
+      'sequential' => 1,
+      'return' => "contact_id,contribution_page_id,total_amount,invoice_id,trxn_id",
+      'id' => $objectId,
+     ));
+
+   if ($contribution['values'][0]['contribution_page_id']  == $giftcard_contributionPage ) {
+     	  
+     $zz = print_r(get_defined_vars(), TRUE);
+     $debug_code = '<pre>' . $zz . '</pre>';
+     watchdog('Discount-post', $debug_code);
+      
+
+     if (!empty($contribution['values'][0]['trxn_id'])) {
+       $giftcard_code = $contribution['values'][0]['invoice_id'];
+       $giftcard_amount = $contribution['values'][0]['total_amount'];
+       $contact_id = $contribution['values'][0]['contact_id'];
+       $contribution_contact = civicrm_api3('Contact', 'get', array(
+         'sequential' => 1,
+         'return' => "email",
+         'id' => $contact_id,
+        ));
+ 
+       if (!empty($contribution_contact['values'][0]['email'])) {
+         $contribution_email = $contribution_contact['values'][0]['email'];
+        }	
+ 
+       $created_gift_card =  civicrm_api3('DiscountCode', 'create', array(
+         'sequential' => 1,
+         'code' => $giftcard_code,
+         'amount' => $giftcard_amount,
+         'amount_type' => 3,
+         'events' => array(0),
+         'memberships' => array(1,2),
+         'organization_id' => 1,
+         'is_active' => 1,
+         'description' => "Gift Card redeemable at Fat Cat Fab Lab!",
+        ));
+ 
+        // send PDF                                    
+        $result = civicrm_api3('Pdf', 'create', array(
+          'sequential' => 1,
+          'contact_id' => $contact_id,
+          'template_id' => $message_template_id,
+          'to_email' => $contribution_email,
+          'message_text' => "Please find your giftcard PDF attached. Thank you!",
+          'giftcard_id' => $giftcard_code,
+          'giftcard_amount' => $giftcard_amount,
+         ));
+
+
+     }
+    }
+  }
+} 
+    
