@@ -61,7 +61,7 @@ FIXED ALREADY
 * Enhance UI to show which discount code has been applied.
 * Fix membership discounts not working from civicrm/contact/view [Submit Credit Card Membership] - CRM-11028.
 
-GIFTCARD IMPLEMTATION
+GIFTCARD IMPLEMENTATION
 --
 * Added rudimentary support for giftcards.  New Amount Type 3 is added. Similar to Type 2 (fixed) except that
   unused value goes back into discount code.
