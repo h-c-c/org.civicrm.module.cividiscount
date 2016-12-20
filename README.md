@@ -60,3 +60,17 @@ FIXED ALREADY
   + fix _get_discounted_event_ids(), _get_discounted_priceset_ids(), _get_discounted_membership_ids() to return events/pricesets/memberships only for active code
 * Enhance UI to show which discount code has been applied.
 * Fix membership discounts not working from civicrm/contact/view [Submit Credit Card Membership] - CRM-11028.
+
+GIFTCARD IMPLEMTATION
+--
+* Added rudimentary support for giftcards.  New Amount Type 3 is added. Similar to Type 2 (fixed) except that
+  unused value goes back into discount code.
+* Administrators currently must manually edit cividiscount.php to add 1) the contribution page Id for gift 
+  card purchase, and 2) the message template id for the attached giftcard PDF which displays Smarty 
+  variables {$giftcard_id} and {$giftcard_amount}.
+* This depends on a modified version of pdfapi.   
+    
+
+
+
+
