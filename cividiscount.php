@@ -1262,9 +1262,10 @@ function cividiscount_civicrm_post( $op, $objectName, $objectId, &$objectRef ) {
          'amount_type' => 3,
          'events' => array(0),
          'memberships' => array(1,2),
+//	 'pricesets' =>  array(YOUR,PRICE,SETS,HERE),
          'organization_id' => 1,
          'is_active' => 1,
-         'description' => "Gift Card redeemable at Fat Cat Fab Lab!",
+         'description' => "Purchased Gift Card",
         ));
  
         // send PDF                                    
