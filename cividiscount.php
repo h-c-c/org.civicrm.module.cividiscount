@@ -279,6 +279,7 @@ function cividiscount_civicrm_validateForm($name, &$fields, &$files, &$form, &$e
  * @param $amounts
  */
 function cividiscount_civicrm_buildAmount($pageType, &$form, &$amounts) {
+
   if (( !$form->getVar('_action')
         || ($form->getVar('_action') & CRM_Core_Action::PREVIEW)
         || ($form->getVar('_action') & CRM_Core_Action::ADD)
@@ -745,15 +746,23 @@ function _cividiscount_consume_discount_code_for_online_contribution($params, $d
   $discountParams['entity_table'] = 'civicrm_membership';
   $discountParams['entity_id'] =  $membershipId;
   civicrm_api3('DiscountTrack', 'create', $discountParams);
-    if (!empty($discountParams['remainder'])) {
-      civicrm_api3('DiscountCode', 'create', array(
-        'sequential' => 1,
-        'id' => $discountParams['item_id'],
-        'amount' => $discountParams['remainder'],
-        'amount_type' => 3,
-	'is_active' => 1,
+  if ( $discountParams['remainder'] > 0.00 )  {  
+    civicrm_api3('DiscountCode', 'create', array(
+      'sequential' => 1,
+      'id' => $discountParams['item_id'],
+      'amount' => $discountParams['remainder'],
+      'amount_type' => 3,
+      'is_active' => 1,
      ));
-   }
+   } else if ( $discountParams['remainder'] <= 0.00 )  {
+    civicrm_api3('DiscountCode', 'create', array(
+      'sequential' => 1,
+      'id' => $discountParams['item_id'],
+      'amount' => '0.00',
+      'amount_type' => 3,
+      'is_active' => 0,
+     ));
+  }
 }
 
 /**
@@ -821,14 +830,22 @@ function _cividiscount_consume_discount_code_for_online_event($participant_ids, 
     $discountParams['entity_table'] = 'civicrm_participant';
     $discountParams['entity_id'] = $participant_id;
     civicrm_api3('DiscountTrack', 'create', $discountParams);
-    if (!empty($discountParams['remainder'])) {
+    if ( $discountParams['remainder'] > 0.00 )  {  
       civicrm_api3('DiscountCode', 'create', array(
         'sequential' => 1,
-	'id' => $discountParams['item_id'],
-        'is_active' => 1,
-        'amount_type' => 3,
+        'id' => $discountParams['item_id'],
         'amount' => $discountParams['remainder'],
-));  
+        'amount_type' => 3,
+	'is_active' => 1,
+       ));
+     } else if ( $discountParams['remainder'] <= 0.00 )  {
+       civicrm_api3('DiscountCode', 'create', array(
+        'sequential' => 1,
+        'id' => $discountParams['item_id'],
+        'amount' => '0.00',
+        'amount_type' => 3,
+        'is_active' => 0,
+        ));
     }
   }
 }
@@ -934,16 +951,16 @@ function _cividiscount_calc_discount($amount, $label, $discount, $autodiscount, 
     $newamount = CRM_Utils_Rule::cleanMoney($amount) - CRM_Utils_Rule::cleanMoney($discount['amount']);
     $fmt_discount = CRM_Utils_Money::format($discount['amount'], $currency);
     $newlabel = $label . " ({$title}: {$fmt_discount} {$discount['description']})";
-    if ( $discount['amount_type'] == '3' && $newamount <= 0) {
+    if ( $discount['amount_type'] == '3' && $newamount < 0.00 ) {
         $remainder = abs($newamount);
      } else {
-	$remainder = 0;     
+	$remainder = 0.00;     
      }
   }
   else {
     $newamount = $amount - ($amount * ($discount['amount'] / 100));
     $newlabel = $label ." ({$title}: {$discount['amount']}% {$discount['description']})";
-    $remainder = 0;     
+    $remainder = 0.00;     
   }
 
   $newamount = round($newamount, 2);
@@ -1236,9 +1253,6 @@ function cividiscount_civicrm_post( $op, $objectName, $objectId, &$objectRef ) {
 
    if ($contribution['values'][0]['contribution_page_id']  == $giftcard_contributionPage ) {
      	  
-     $zz = print_r(get_defined_vars(), TRUE);
-     $debug_code = '<pre>' . $zz . '</pre>';
-     watchdog('Discount-post', $debug_code);
       
 
      if (!empty($contribution['values'][0]['trxn_id'])) {
