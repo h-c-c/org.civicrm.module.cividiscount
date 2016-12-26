@@ -67,7 +67,8 @@ GIFTCARD IMPLEMENTATION
   unused value goes back into discount code.
 * Administrators currently must manually edit cividiscount.php to add 1) the contribution page Id for gift 
   card purchase, and 2) the message template id for the attached giftcard PDF which displays Smarty 
-  variables {$giftcard_id} and {$giftcard_amount}. 3) the 
+  variables {$giftcard_id} and {$giftcard_amount}. 3) the arrays that correspond to what should be discounted. 
+  ie pricesets, evetnts or memebrships.
 * This depends on a modified version of pdfapi: https://github.com/h-c-c/org.civicoop.pdfapi/tree/giftcard-dev  
     
 
