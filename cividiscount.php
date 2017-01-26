@@ -1100,7 +1100,7 @@ function _cividiscount_add_discount_textfield(&$form) {
     _cividiscount_add_button_before_priceSet($form);
     return;
   }
-  $form->addElement('text', 'discountcode', ts('If you have a discount code, enter it here'));
+  $form->addElement('text', 'discountcode', ts('If you have a discount/giftcard code, enter it here'));
   $errorMessage = $form->get('discountCodeErrorMsg');
   if ($errorMessage) {
     $form->setElementError('discountcode', $errorMessage);
@@ -1158,7 +1158,7 @@ function _cividiscount_add_button_before_priceSet(&$form) {
   $form->add(
     'text',
     'discountcode',
-    ts('If you have a discount code, enter it here'),
+    ts('If you have a discount/giftcard code, enter it here'),
     array('class' => 'description')
   );
   $errorMessage = $form->get('discountCodeErrorMsg');
