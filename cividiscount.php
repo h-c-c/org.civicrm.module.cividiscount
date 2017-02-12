@@ -749,22 +749,29 @@ function _cividiscount_consume_discount_code_for_online_contribution($params, $d
   $discountParams['entity_table'] = 'civicrm_membership';
   $discountParams['entity_id'] =  $membershipId;
   civicrm_api3('DiscountTrack', 'create', $discountParams);
-  if ( $discountParams['remainder'] > 0.00 )  {  
-    civicrm_api3('DiscountCode', 'create', array(
-      'sequential' => 1,
-      'id' => $discountParams['item_id'],
-      'amount' => $discountParams['remainder'],
-      'amount_type' => 3,
-      'is_active' => 1,
-     ));
-   } else if ( $discountParams['remainder'] <= 0.00 )  {
-    civicrm_api3('DiscountCode', 'create', array(
-      'sequential' => 1,
-      'id' => $discountParams['item_id'],
-      'amount' => '0.00',
-      'amount_type' => 3,
-      'is_active' => 0,
-     ));
+  // Look up what kind of code this is to see if we should consume it as a giftcard
+  $discountType = civicrm_api3('DiscountCode', 'getvalue', array(
+    'return' => "amount_type",
+    'id' => $discountParams['item_id'],
+  ));
+  if ($discountType == 3) {
+    if ( $discountParams['remainder'] > 0.00 )  {  
+      civicrm_api3('DiscountCode', 'create', array(
+        'sequential' => 1,
+        'id' => $discountParams['item_id'],
+        'amount' => $discountParams['remainder'],
+        'amount_type' => 3,
+        'is_active' => 1,
+       ));
+     } else if ( $discountParams['remainder'] <= 0.00 )  {
+      civicrm_api3('DiscountCode', 'create', array(
+        'sequential' => 1,
+        'id' => $discountParams['item_id'],
+        'amount' => '0.00',
+        'amount_type' => 3,
+        'is_active' => 0,
+       ));
+    }
   }
 }
 
@@ -818,7 +825,6 @@ function _cividiscount_extract_memberships_from_line_items($params) {
  * @throws \CiviCRM_API3_Exception
  */
 function _cividiscount_consume_discount_code_for_online_event($participant_ids, $discountParams) {
-
   // if multiple participant discount is not enabled then only use primary participant info for discount
   // and ignore additional participants
   if (!_cividiscount_allow_multiple()) {
@@ -833,26 +839,32 @@ function _cividiscount_consume_discount_code_for_online_event($participant_ids, 
     $discountParams['entity_table'] = 'civicrm_participant';
     $discountParams['entity_id'] = $participant_id;
     civicrm_api3('DiscountTrack', 'create', $discountParams);
-    if ( $discountParams['remainder'] > 0.00 )  {  
-      civicrm_api3('DiscountCode', 'create', array(
-        'sequential' => 1,
-        'id' => $discountParams['item_id'],
-        'amount' => $discountParams['remainder'],
-        'amount_type' => 3,
-	'is_active' => 1,
-       ));
-     } else if ( $discountParams['remainder'] <= 0.00 )  {
-       civicrm_api3('DiscountCode', 'create', array(
-        'sequential' => 1,
-        'id' => $discountParams['item_id'],
-        'amount' => '0.00',
-        'amount_type' => 3,
-        'is_active' => 0,
+    // Look up what kind of code this is to see if we should consume it as a giftcard
+    $discountType = civicrm_api3('DiscountCode', 'getvalue', array(
+      'return' => "amount_type",
+      'id' => $discountParams['item_id'],
+    ));
+    if ($discountType == 3) {
+      if ( $discountParams['remainder'] > 0.00 )  {  
+        civicrm_api3('DiscountCode', 'create', array(
+          'sequential' => 1,
+          'id' => $discountParams['item_id'],
+          'amount' => $discountParams['remainder'],
+          'amount_type' => 3,
+	  'is_active' => 1,
         ));
+      } else if ( $discountParams['remainder'] <= 0.00 )  {
+        civicrm_api3('DiscountCode', 'create', array(
+          'sequential' => 1,
+          'id' => $discountParams['item_id'],
+          'amount' => '0.00',
+          'amount_type' => 3,
+          'is_active' => 0,
+        ));
+      }
     }
   }
 }
-
 /**
  * For participant and member delete, decrement the code usage value since
  * they are no longer using the code.
